@@ -1,4 +1,5 @@
 from multiprocessing import Process, Pipe
+import numpy as np
 import gym
 import gin
 

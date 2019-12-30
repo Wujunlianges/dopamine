@@ -7,8 +7,8 @@ from dopamine.discrete_domains import run_experiment
 import tensorflow as tf
 
 # gin_files = ['dopamine/agents/dqn/configs/dqn.gin']
-gin_files = ['./minigrid.gin']
-base_dir = './tmp/minigrid/'
+gin_files = ['./parallel_env_test.gin']
+base_dir = './tmp/parallel/'
 gin_bindings = []
 
 tf.logging.set_verbosity(tf.logging.INFO)
