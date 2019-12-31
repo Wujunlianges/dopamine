@@ -423,15 +423,10 @@ class Runner(object):
     """
         statistics = iteration_statistics.IterationStatistics()
         tf.logging.info('Starting iteration %d', iteration)
-        start_time = time.time()
         num_episodes_train, average_reward_train = self._run_train_phase(
             statistics)
-        train_time = time.time()
         num_episodes_eval, average_reward_eval = self._run_eval_phase(
             statistics)
-        eval_time = time.time()
-        tf.logging.info('train time: %.4f eval time: %.4f',
-                        train_time - start_time, eval_time - train_time)
         self._save_tensorboard_summaries(iteration, num_episodes_train,
                                          average_reward_train,
                                          num_episodes_eval,
