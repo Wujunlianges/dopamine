@@ -1,0 +1,35 @@
+# Hyperparameters follow the classic Nature DQN, but we modify as necessary to
+# match those used in Rainbow (Hessel et al., 2018), to ensure apples-to-apples
+# comparison.
+import dopamine.discrete_domains.minigrid_lib
+import dopamine.discrete_domains.run_experiment
+import dopamine.agents.dqn.dqn_agent
+import dopamine.replay_memory.circular_replay_buffer
+import gin.tf.external_configurables
+
+DQNAgent.observation_shape = %minigrid_lib.MINIGRID_OBSERVATION_SHAPE
+DQNAgent.observation_dtype = %minigrid_lib.MINIGRID_OBSERVATION_DTYPE
+DQNAgent.network = @minigrid_lib.MinigridDQNNetwork
+DQNAgent.gamma = 0.99
+DQNAgent.update_horizon = 1
+DQNAgent.min_replay_history = 500
+DQNAgent.update_period = 4
+DQNAgent.target_update_period = 100
+DQNAgent.epsilon_fn = @dqn_agent.identity_epsilon
+DQNAgent.tf_device = '/gpu:0'  # use '/cpu:*' for non-GPU version
+DQNAgent.optimizer = @tf.train.AdamOptimizer()
+
+tf.train.AdamOptimizer.learning_rate = 0.001
+tf.train.AdamOptimizer.epsilon = 0.0003125
+
+minigrid_lib.create_minigrid_environment.game_name = 'MiniGrid-Empty-5x5-v0'
+
+create_agent.agent_name = 'dqn'
+Runner.create_environment_fn = @minigrid_lib.create_minigrid_environment
+Runner.num_iterations = 500
+Runner.training_steps = 1000
+Runner.evaluation_steps = 1000
+Runner.max_steps_per_episode = 200  # Default max episode length.
+
+WrappedPrioritizedReplayBuffer.replay_capacity = 50000
+WrappedPrioritizedReplayBuffer.batch_size = 128
