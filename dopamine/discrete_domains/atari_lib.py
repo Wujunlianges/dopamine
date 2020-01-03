@@ -782,3 +782,82 @@ class MyRainbowNetwork(tf.keras.Model):
 
         q_values = dist_value_fn(q_values, std_values)
         return RainbowNetworkType(q_values, logits, probabilities)
+
+
+@gin.configurable
+class QuantileNetwork(tf.keras.Model):
+    """The Implicit Quantile Network (Dabney et al., 2018).."""
+    def __init__(self, num_actions, quantile_embedding_dim, name=None):
+        """Creates the layers used calculating quantile values.
+
+    Args:
+      num_actions: int, number of actions.
+      quantile_embedding_dim: int, embedding dimension for the quantile input.
+      name: str, used to create scope for network parameters.
+    """
+        super(QuantileNetwork, self).__init__(name=name)
+        self.num_actions = num_actions
+        self.quantile_embedding_dim = quantile_embedding_dim
+        # We need the activation function during `call`, therefore set the field.
+        self.activation_fn = tf.keras.activations.relu
+        self.kernel_initializer = tf.keras.initializers.VarianceScaling(
+            scale=1.0 / np.sqrt(3.0), mode='fan_in', distribution='uniform')
+        # Defining layers.
+        self.conv1 = tf.keras.layers.Conv2D(
+            32, [8, 8],
+            strides=4,
+            padding='same',
+            activation=self.activation_fn,
+            kernel_initializer=self.kernel_initializer,
+            name='Conv')
+        self.conv2 = tf.keras.layers.Conv2D(
+            64, [4, 4],
+            strides=2,
+            padding='same',
+            activation=self.activation_fn,
+            kernel_initializer=self.kernel_initializer,
+            name='Conv')
+        self.conv3 = tf.keras.layers.Conv2D(
+            64, [3, 3],
+            strides=1,
+            padding='same',
+            activation=self.activation_fn,
+            kernel_initializer=self.kernel_initializer,
+            name='Conv')
+        self.flatten = tf.keras.layers.Flatten()
+        self.dense1 = tf.keras.layers.Dense(
+            512,
+            activation=self.activation_fn,
+            kernel_initializer=self.kernel_initializer,
+            name='fully_connected')
+        self.dense2 = tf.keras.layers.Dense(
+            num_actions * quantile_embedding_dim,
+            kernel_initializer=self.kernel_initializer,
+            name='fully_connected')
+
+    def call(self, state, num_quantiles):
+        """Creates the output tensor/op given the state tensor as input.
+
+    See https://www.tensorflow.org/api_docs/python/tf/keras/Model for more
+    information on this. Note that tf.keras.Model implements `call` which is
+    wrapped by `__call__` function by tf.keras.Model.
+
+    Args:
+      state: `tf.Tensor`, contains the agent's current state.
+      num_quantiles: int, number of quantile inputs.
+    Returns:
+      collections.namedtuple, that contains (quantile_values, quantiles).
+    """
+        batch_size = state.get_shape().as_list()[0]
+        x = tf.cast(state, tf.float32)
+        x = tf.div(x, 255.)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.flatten(x)
+        x = self.dense1(x)
+        x = self.dense2(x)
+        quantiles = tf.reshape(
+            x, (-1, self.num_actions, self.quantile_embedding_dim))
+        quantile_values = quantiles
+        return ImplicitQuantileNetworkType(quantile_values, quantiles)
