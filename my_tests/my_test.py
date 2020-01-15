@@ -6,8 +6,8 @@ from dopamine.discrete_domains import run_experiment
 
 import tensorflow as tf
 
-gin_files = ['./minigrid.gin']
-base_dir = './tmp/minigrid/'
+gin_files = ['./my_tests/fourier_pong.gin']
+base_dir = './tmp/fourier/'
 gin_bindings = []
 
 tf.logging.set_verbosity(tf.logging.INFO)

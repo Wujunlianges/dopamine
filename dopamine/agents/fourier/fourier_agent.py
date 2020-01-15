@@ -126,6 +126,9 @@ class FourierAgent(dqn_agent.DQNAgent):
 
         target_support = rewards + gamma_with_terminal * tiled_support
 
+        qt_argmax = tf.argmax(self._replay_net_outputs.q_values,
+                              axis=1)[:, None]
+
         next_qt_argmax = tf.argmax(
             self._replay_next_target_net_outputs.q_values, axis=1)[:, None]
 
@@ -134,19 +137,24 @@ class FourierAgent(dqn_agent.DQNAgent):
         batch_indexed_next_qt_argmax = tf.concat(
             [batch_indices, next_qt_argmax], axis=1)
 
+        batch_indexed_qt_argmax = tf.concat([batch_indices, qt_argmax], axis=1)
+
         next_logits = tf.gather_nd(self._replay_next_target_net_outputs.logits,
                                    batch_indexed_next_qt_argmax)
 
-        return target_support, next_logits
+        logits = tf.gather_nd(self._replay_net_outputs.logits,
+                              batch_indexed_qt_argmax)
+
+        return target_support, next_logits, logits
 
     def _build_train_op(self):
-        target_support, next_logits = tf.stop_gradient(
-            self._build_target_support())
-        logits = self._replay_net_outputs.logits
+        target_support, next_logits, logits = self._build_target_support()
+        next_logits = tf.stop_gradient(next_logits)
         complex_logits = expo2complex(logits)
         complex_next_logits = expo2complex(next_logits)
-        loss = complex_next_logits**2 * target_support + complex_logits**2 * self._support
-        loss = tf.sqrt(tf.math.real(loss), axis=-1).mean()
+        loss = (tf.math.real(complex_next_logits**2) * target_support +
+                tf.math.real(complex_logits**2) * self._support)
+        loss = tf.math.reduce_sum(tf.sqrt(loss), axis=-1)
 
         if self._replay_scheme == 'prioritized':
             # The original prioritized experience replay uses a linear exponent
